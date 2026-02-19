@@ -1,0 +1,36 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: oidc-mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: oidc
+    volumes:
+      - mongo_data:/data/db
+
+  oidc:
+    build: .
+    container_name: oidc-server
+    depends_on:
+      - mongo
+    ports:
+      - "8000:8000"
+    environment:
+      ENABLE_DEBUG_ENDPOINTS: "true"   # set false in production
+      DEBUG_KEY: "change-me"           # optional; if set, must send X-Debug-Key
+
+      ISSUER: "http://localhost:8000"
+      MONGO_URL: "mongodb://mongo:27017"
+      MONGO_DB: "oidc"
+      COOKIE_SECURE: "false"   # set true behind TLS
+      ACCESS_TOKEN_MODE: "jwt" # "jwt" or "opaque"
+      ACCESS_TTL_SECONDS: "600"
+      ID_TTL_SECONDS: "600"
+      AUTH_CODE_TTL_SECONDS: "120"
+      CSRF_TTL_SECONDS: "600"
+    volumes:
+      - ./templates:/app/templates:ro
+
+volumes:
+  mongo_data:

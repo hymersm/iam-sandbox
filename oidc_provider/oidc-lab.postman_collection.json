@@ -1,0 +1,315 @@
+{
+  "info": {
+    "name": "OIDC Mongo Hardened Lab",
+    "_postman_id": "d8f6ef7c-2c93-4d0f-9a4b-0f96d9e3c2b1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Discovery",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/.well-known/openid-configuration",
+          "host": ["{{baseUrl}}"],
+          "path": [".well-known", "openid-configuration"]
+        }
+      }
+    },
+    {
+      "name": "Debug - Reset Volatile State",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Debug-Key", "value": "{{debugKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"confirm\": \"RESET\",\n  \"preserve_seed\": true,\n  \"preserve_keys\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/debug/reset",
+          "host": ["{{baseUrl}}"],
+          "path": ["debug", "reset"]
+        }
+      }
+    },
+    {
+      "name": "Debug - PKCE Pair",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "X-Debug-Key", "value": "{{debugKey}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/debug/pkce",
+          "host": ["{{baseUrl}}"],
+          "path": ["debug", "pkce"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('pkce_verifier', j.verifier);",
+              "pm.environment.set('pkce_challenge', j.challenge);",
+              "pm.environment.set('pkce_method', j.method);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Debug - Mint Tokens (alice -> demo-spa)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Debug-Key", "value": "{{debugKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"client_id\": \"{{spaClientId}}\",\n  \"scope\": \"openid profile email offline_access\",\n  \"audience\": \"{{audience}}\",\n  \"resource\": \"{{resource}}\",\n  \"include_refresh\": true\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/debug/mint",
+          "host": ["{{baseUrl}}"],
+          "path": ["debug", "mint"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('access_token', j.access_token);",
+              "if (j.refresh_token) pm.environment.set('refresh_token', j.refresh_token);",
+              "pm.environment.set('token_scope', j.scope);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "UserInfo (Bearer access_token)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{access_token}}" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/userinfo",
+          "host": ["{{baseUrl}}"],
+          "path": ["userinfo"]
+        }
+      }
+    },
+    {
+      "name": "Introspect (client_secret_basic) - access_token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Basic {{backendBasicAuth}}" },
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "token", "value": "{{access_token}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/oauth2/introspect",
+          "host": ["{{baseUrl}}"],
+          "path": ["oauth2", "introspect"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('introspect_active', String(j.active));",
+              "if (j.sub) pm.environment.set('introspect_sub', j.sub);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Refresh (public client) - demo-spa",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "refresh_token", "type": "text" },
+            { "key": "client_id", "value": "{{spaClientId}}", "type": "text" },
+            { "key": "refresh_token", "value": "{{refresh_token}}", "type": "text" },
+            { "key": "audience", "value": "{{audience}}", "type": "text" },
+            { "key": "resource", "value": "{{resource}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/oauth2/token",
+          "host": ["{{baseUrl}}"],
+          "path": ["oauth2", "token"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('access_token', j.access_token);",
+              "if (j.refresh_token) pm.environment.set('refresh_token', j.refresh_token);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Token Exchange (RFC8693) - backend secret",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Basic {{backendBasicAuth}}" },
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "grant_type", "value": "urn:ietf:params:oauth:grant-type:token-exchange", "type": "text" },
+            { "key": "subject_token", "value": "{{access_token}}", "type": "text" },
+            { "key": "subject_token_type", "value": "urn:ietf:params:oauth:token-type:access_token", "type": "text" },
+            { "key": "audience", "value": "{{exchangeAudience}}", "type": "text" },
+            { "key": "resource", "value": "{{exchangeResource}}", "type": "text" },
+            { "key": "scope", "value": "openid profile", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/oauth2/token",
+          "host": ["{{baseUrl}}"],
+          "path": ["oauth2", "token"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('exchanged_access_token', j.access_token);",
+              "pm.environment.set('exchanged_scope', j.scope || '');"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Introspect (client_secret_basic) - exchanged_access_token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Basic {{backendBasicAuth}}" },
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "token", "value": "{{exchanged_access_token}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/oauth2/introspect",
+          "host": ["{{baseUrl}}"],
+          "path": ["oauth2", "introspect"]
+        }
+      }
+    },
+    {
+      "name": "Debug - Make private_key_jwt client assertion",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "X-Debug-Key", "value": "{{debugKey}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"client_id\": \"{{pkjwtClientId}}\",\n  \"private_pem\": \"{{pkjwtPrivatePem}}\",\n  \"kid\": \"{{pkjwtKid}}\",\n  \"aud\": \"{{baseUrl}}/oauth2/token\",\n  \"ttl_seconds\": 300\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/debug/client-assertion",
+          "host": ["{{baseUrl}}"],
+          "path": ["debug", "client-assertion"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "pm.environment.set('pkjwt_assertion', j.client_assertion);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Introspect (private_key_jwt) - access_token",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "token", "value": "{{access_token}}", "type": "text" },
+            { "key": "client_id", "value": "{{pkjwtClientId}}", "type": "text" },
+            { "key": "client_assertion_type", "value": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", "type": "text" },
+            { "key": "client_assertion", "value": "{{pkjwt_assertion}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/oauth2/introspect",
+          "host": ["{{baseUrl}}"],
+          "path": ["oauth2", "introspect"]
+        }
+      }
+    },
+    {
+      "name": "Revoke Refresh Token (client_secret_basic)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Basic {{backendBasicAuth}}" },
+          { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            { "key": "token", "value": "{{refresh_token}}", "type": "text" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/oauth2/revoke",
+          "host": ["{{baseUrl}}"],
+          "path": ["oauth2", "revoke"]
+        }
+      }
+    }
+  ]
+}

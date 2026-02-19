@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Consent</title></head>
+  <body>
+    <h2>Consent</h2>
+
+    <p><b>Client:</b> {{ client_id }}</p>
+    <p><b>Scopes:</b> {{ scope }}</p>
+    {% if audience %}<p><b>Audience:</b> {{ audience }}</p>{% endif %}
+    {% if resource %}<p><b>Resource:</b> {{ resource }}</p>{% endif %}
+
+    <form method="post" action="/ui/consent">
+      <input type="hidden" name="consent_id" value="{{ consent_id }}" />
+      <input type="hidden" name="csrf" value="{{ csrf }}" />
+      <button name="decision" value="allow" type="submit">Allow</button>
+      <button name="decision" value="deny" type="submit">Deny</button>
+    </form>
+  </body>
+</html>
