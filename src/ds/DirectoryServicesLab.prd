@@ -1,0 +1,444 @@
+# PRD: LDAP & Directory Services Exploration Lab
+
+## 1. Overview
+
+### Product name (working)
+
+**`directory-lab`**
+(Alternative names: `ldap-lab`, `ds-lab`, `identity-directory-lab`)
+
+### Purpose
+
+This application is a **hands-on exploration lab** for understanding **LDAP and Directory Services** at a practical, protocol, and data-model level.
+
+The lab is designed to:
+
+* demystify how directory services work internally
+* expose LDAP operations as observable, inspectable steps
+* allow engineers to experiment locally without enterprise infrastructure
+* build intuition that transfers to real-world systems such as:
+
+  * Active Directory
+  * PingDirectory
+  * ForgeRock DS
+  * OpenLDAP
+
+This is **not** a production directory server.
+It is an **educational and architectural exploration tool**.
+
+---
+
+## 2. Goals
+
+### Primary goals
+
+* Understand **what a directory service is** (and is not)
+* Explore **LDAP as a protocol**, not just as a client API
+* Learn how:
+
+  * entries are stored
+  * DNs are constructed
+  * schemas are enforced
+  * indexes affect lookup
+* Observe **bind, search, modify, compare** operations in isolation
+* Run everything **locally in Docker**
+
+### Secondary goals
+
+* Compare directory concepts with:
+
+  * relational databases
+  * document stores
+* Prepare groundwork for:
+
+  * LDAP auth in applications
+  * IAM systems (PingAM, ForgeRock AM)
+  * SAML / OIDC backed by directories
+
+---
+
+## 3. Non-goals
+
+This application will **not**:
+
+* Replace a real directory server
+* Implement a full LDAP server from scratch
+* Provide production-grade security
+* Become an IAM product
+* Hide LDAP details behind abstractions
+
+> The lab intentionally exposes complexity rather than hiding it.
+
+---
+
+## 4. Target audience
+
+* Software engineers new to LDAP / directories
+* IAM engineers who have *used* directories but not understood them deeply
+* Architects bridging legacy directory-based IAM into modern systems
+* Developers integrating LDAP authentication or authorization
+* Anyone who has asked:
+
+  > “Why does LDAP look so weird compared to a database?”
+
+---
+
+## 5. Technology choices
+
+### Directory backend
+
+* **OpenLDAP** (via Docker)
+
+  * Widely used
+  * Transparent data model
+  * Easy to inspect on disk
+* Optional future support:
+
+  * 389 Directory Server
+  * ForgeRock DS (for comparison)
+
+### Application layer
+
+* **Node.js + TypeScript**
+* **Express**
+* **ldapjs** (or equivalent low-level LDAP client)
+
+### Containerization
+
+* **Docker Compose**
+
+  * Directory server
+  * App container
+  * Optional admin UI container (e.g. phpLDAPadmin)
+
+---
+
+## 6. Core concepts to explore
+
+The lab should explicitly surface these concepts:
+
+### Directory structure
+
+* Distinguished Names (DN)
+* Relative Distinguished Names (RDN)
+* Base DN
+* Tree vs hierarchy
+* Naming contexts
+
+### Entries
+
+* Object classes
+* Attributes
+* Multi-valued attributes
+* Required vs optional attributes
+
+### Schema
+
+* Structural vs auxiliary object classes
+* Attribute types
+* Enforcement rules
+* What happens when schema is violated
+
+### Operations
+
+* Bind (simple, anonymous)
+* Search
+* Compare
+* Add
+* Modify
+* Delete
+
+### Persistence
+
+* How entries are stored on disk
+* Index files
+* What changes when an index is added
+* What a directory “write” actually does
+
+---
+
+## 7. Application behaviour
+
+The application is **not** an abstraction layer.
+It is a **guided exploration tool**.
+
+Each endpoint should:
+
+* perform one LDAP operation
+* log:
+
+  * the LDAP request
+  * the LDAP response
+  * the effect on directory state
+* return structured JSON describing *what just happened*
+
+---
+
+## 8. Proposed discovery endpoints
+
+### 8.1 Directory introspection
+
+#### `GET /directory/info`
+
+Returns:
+
+* base DN
+* naming contexts
+* supported LDAP versions
+* supported controls
+* supported extensions
+
+Purpose:
+
+> “What is this directory, fundamentally?”
+
+---
+
+### 8.2 Schema exploration
+
+#### `GET /schema/object-classes`
+
+Returns:
+
+* available object classes
+* required attributes
+* optional attributes
+
+#### `GET /schema/attributes`
+
+Returns:
+
+* attribute definitions
+* syntax
+* single vs multi-valued
+
+Purpose:
+
+> “What rules govern what I can store?”
+
+---
+
+### 8.3 Tree exploration
+
+#### `GET /tree`
+
+Returns:
+
+* high-level directory tree
+* base DN
+* immediate children
+
+#### `GET /tree/:dn`
+
+Returns:
+
+* entry details
+* children
+* object classes
+* attributes
+
+Purpose:
+
+> “This is not a table. It’s a tree.”
+
+---
+
+### 8.4 Bind & authentication
+
+#### `POST /bind`
+
+Body:
+
+```json
+{
+  "dn": "uid=user1,ou=people,dc=example,dc=com",
+  "password": "secret"
+}
+```
+
+Returns:
+
+* success/failure
+* LDAP result code
+* explanation
+
+Purpose:
+
+> “Authentication is just a bind.”
+
+---
+
+### 8.5 Search mechanics
+
+#### `POST /search`
+
+Body:
+
+```json
+{
+  "baseDN": "ou=people,dc=example,dc=com",
+  "scope": "sub",
+  "filter": "(uid=user1)",
+  "attributes": ["uid", "mail"]
+}
+```
+
+Returns:
+
+* search results
+* matched DNs
+* execution metadata
+
+Purpose:
+
+> “Filters are the real query language.”
+
+---
+
+### 8.6 Entry lifecycle
+
+#### `POST /entry`
+
+Create an entry
+
+#### `PUT /entry/:dn`
+
+Modify attributes
+
+#### `DELETE /entry/:dn`
+
+Delete entry
+
+Purpose:
+
+> “Everything is a DN-addressed object.”
+
+---
+
+### 8.7 Compare operation
+
+#### `POST /compare`
+
+Body:
+
+```json
+{
+  "dn": "uid=user1,ou=people,dc=example,dc=com",
+  "attribute": "mail",
+  "value": "user1@example.com"
+}
+```
+
+Purpose:
+
+> “LDAP can answer yes/no questions efficiently.”
+
+---
+
+### 8.8 Persistence & indexing (advanced)
+
+#### `GET /persistence/files`
+
+Returns:
+
+* directory data files
+* index files
+* sizes
+* last modified timestamps
+
+#### `POST /index/:attribute`
+
+Creates an index and compares search performance
+
+Purpose:
+
+> “Why directories are fast at reads.”
+
+---
+
+## 9. Docker setup requirements
+
+The lab must support:
+
+* `docker compose up`
+* predictable base DN and admin credentials
+* volume mounts to inspect:
+
+  * database files
+  * schema files
+  * config
+
+Optional:
+
+* separate compose profiles for:
+
+  * minimal
+  * indexed
+  * schema-heavy
+
+---
+
+## 10. Observability & learning focus
+
+The app should:
+
+* log raw LDAP operations
+* return LDAP result codes and messages
+* show before/after state where useful
+* avoid “magic”
+
+Where possible:
+
+* include references to relevant LDAP RFC sections
+* annotate responses with explanations
+
+---
+
+## 11. Security posture (explicitly non-production)
+
+* Simple bind only
+* No TLS by default (can be enabled later)
+* Credentials visible for learning
+* No hardening
+
+This is intentional and documented.
+
+---
+
+## 12. Success criteria
+
+This lab is successful if a user can:
+
+* Explain the difference between LDAP and a database
+* Describe what a DN is and how it’s resolved
+* Understand how authentication works in LDAP
+* Visualise directory persistence
+* Confidently approach real-world directory systems
+
+---
+
+## 13. Future extensions (out of scope for v1)
+
+* LDAP-backed authentication for an app
+* Group membership resolution
+* Role mapping
+* Directory replication concepts
+* Integration with SAML/OIDC flows
+* Comparing LDAP vs SCIM
+
+---
+
+## 14. Relationship to existing labs
+
+This project is a **natural companion** to the SAML-SP lab:
+
+| SAML-SP Lab  | Directory Lab    |
+| ------------ | ---------------- |
+| Federation   | Identity storage |
+| Assertions   | Entries          |
+| Claims       | Attributes       |
+| Trust        | Schema           |
+| Browser flow | Bind/Search      |
+
+Together, they form a coherent **IAM learning path**.
+

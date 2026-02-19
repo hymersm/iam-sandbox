@@ -1,0 +1,58 @@
+# ---- Information tree (assumes dc=example,dc=org already exists) ----
+
+dn: ou=People,dc=example,dc=org
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Groups,dc=example,dc=org
+objectClass: organizationalUnit
+ou: Groups
+
+dn: ou=ServiceAccounts,dc=example,dc=org
+objectClass: organizationalUnit
+ou: ServiceAccounts
+
+# ---- Service account for app binds (preferred vs cn=admin) ----
+dn: uid=svc-directory,ou=ServiceAccounts,dc=example,dc=org
+objectClass: inetOrgPerson
+cn: Directory Service
+sn: Service
+uid: svc-directory
+userPassword: svc-directory-password
+
+# ---- Human users ----
+dn: uid=johndoe,ou=People,dc=example,dc=org
+objectClass: inetOrgPerson
+cn: John Doe
+sn: Doe
+uid: johndoe
+mail: johndoe@example.org
+userPassword: password123
+
+dn: uid=anna.meier,ou=People,dc=example,dc=org
+objectClass: inetOrgPerson
+cn: Anna Meier
+sn: Meier
+uid: anna.meier
+mail: anna.meier@example.org
+userPassword: password456
+
+dn: uid=peter.schmidt,ou=People,dc=example,dc=org
+objectClass: inetOrgPerson
+cn: Peter Schmidt
+sn: Schmidt
+uid: peter.schmidt
+mail: peter.schmidt@example.org
+userPassword: password789
+
+# ---- Groups ----
+dn: cn=IT,ou=Groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: IT
+member: uid=johndoe,ou=People,dc=example,dc=org
+member: uid=anna.meier,ou=People,dc=example,dc=org
+
+dn: cn=Marketing,ou=Groups,dc=example,dc=org
+objectClass: groupOfNames
+cn: Marketing
+member: uid=peter.schmidt,ou=People,dc=example,dc=org

@@ -1,0 +1,26 @@
+services:
+  python-api:
+    build:
+      context: ./python-api
+    ports:
+      - "5001:5000"
+    environment:
+      AWS_REGION: ${AWS_REGION:-eu-west-2}
+      MODE: ${MODE:-direct}
+      ASSUME_ROLE_ARN: ${ASSUME_ROLE_ARN:-}
+      AWS_PROFILE: ${AWS_PROFILE:-default}
+    volumes:
+      - ${HOME}/.aws:/root/.aws:ro
+
+  node-api:
+    build:
+      context: ./node-api
+    ports:
+      - "3001:3000"
+    environment:
+      AWS_REGION: ${AWS_REGION:-eu-west-2}
+      MODE: ${MODE:-direct}
+      ASSUME_ROLE_ARN: ${ASSUME_ROLE_ARN:-}
+      AWS_PROFILE: ${AWS_PROFILE:-default}
+    volumes:
+      - ${HOME}/.aws:/root/.aws:ro

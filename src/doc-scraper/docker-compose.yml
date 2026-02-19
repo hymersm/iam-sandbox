@@ -1,0 +1,22 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+  app:
+    build: .
+    container_name: ollama-client
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: gpt-oss:20b
+    depends_on:
+      - ollama
+    ports:
+      - "3000:3000"
+
+volumes:
+  ollama:
